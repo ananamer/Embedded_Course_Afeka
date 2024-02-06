@@ -35,6 +35,9 @@ void main()
     TRISBbits.TRISB9 = 1; //  RB9  (SW7) configured as input
     ANSELBbits.ANSB9 = 0; //  RB9  (SW7) disabled analog
     
+    TRISBbits.TRISB14 = 0; // RB14 (Buzzer) configured as output
+    ANSELBbits.ANSB14 = 0; // RB14 disabled analog
+    
     
     unsigned char SW2_Numbers[ARRAY_LEN] = {0x18, 0x24, 0x42, 0x81};
     int speed = 0; // default speed set to slow
@@ -95,6 +98,10 @@ void main()
             }
             if(PORTBbits.RB10){ // if SW6
                 // buzzer
+                PORTBbits.RB14 = 0;
+                delay(speed);
+                PORTBbits.RB14 = 1;
+                delay(speed);            
             }
             if(PORTBbits.RB9){ // if SW7
                 // exit
