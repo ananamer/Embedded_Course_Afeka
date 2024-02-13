@@ -1,4 +1,7 @@
 #include <xc.h>
+//#include <string.h>
+//#include <stdio.h>
+//#include <stdlib.h>
 #pragma config JTAGEN = OFF
 #pragma config FWDTEN = OFF
 #pragma config FNOSC =FRCPLL
@@ -9,10 +12,39 @@
 #pragma config FPLLIDIV = DIV_2
 #pragma config FPLLMUL = MUL_20
 #pragma config FPLLODIV = DIV_1
+
 #define ARRAY_LEN 4
-//#include <string.h>
-//#include <stdio.h>
-//#include <stdlib.h>
+#define FIRST_LINE 0x80
+#define SECOND_LINE 0xc0
+
+// Switches
+#define SW0 PORTFbits.RF3
+#define SW1 PORTFbits.RF5
+#define SW2 PORTFbits.RF4
+#define SW3 PORTDbits.RD15
+#define SW4 PORTDbits.RD14
+#define SW5 PORTBbits.RB11
+#define SW6 PORTBbits.RB10
+#define SW7 PORTBbits.RB9
+
+//
+// 0 0 0 0 0 1 S/C R/L - -
+//
+// Shift LEft : 0 0 0 0 0 1 1 0 - -     = 0x18
+// Shift LEft : 0 0 0 0 0 1 0 0 - -     = 0x10
+//
+// 0 0 0 0 0 1 1 0 1 1 = 0x1b
+// 0 0 0 0 0 1 1 0 0 0 = 0x18
+// 0 0 0 0 0 1 1 0 1 0 = 0x1a
+// 0 0 0 0 0 1 1 0 0 1 = 0x19
+
+
+
+//S/C = 1: Display Shift
+//S/C = 0: Cursor Move
+//R/L = 1: Shift Right
+//R/L = 0: Shift Left
+
 
 
 int j;
@@ -50,55 +82,78 @@ void delay(int speed)
     }
 }
 
-void write_to_first_line(char msg[], int len)
+void switchLeft()
 {
     PORTBbits.RB15=0;
     PORTDbits.RD5=0;
-    PORTE = 0x80;
+    PORTE = 0x18;//00011000
     PORTDbits.RD4=1;
     PORTDbits.RD4=0;
     busy();
     PORTBbits.RB15=1;
     PORTDbits.RD5=0;
-
-    //clear lcd
-//    PORTE &= 0x001;
-//    PORTDbits.RD4=1;
-//    PORTDbits.RD4=0;
-//    busy();
-
-
-    for(int i=0; i<len; i++){
-        PORTE = msg[i];
-        PORTDbits.RD4=1;
-        PORTDbits.RD4=0;
-        busy();
-    }
+    delay(0);
 }
 
-void write_to_secod_line(char msg[], int len)
+void clearLCD(char index)
 {
+    char clearMsg[]="                "; 
     PORTBbits.RB15=0;
     PORTDbits.RD5=0;
-    PORTE = 0xc0;
+    PORTE = index;
     PORTDbits.RD4=1;
     PORTDbits.RD4=0;
     busy();
     PORTBbits.RB15=1;
     PORTDbits.RD5=0;
     
-    //clear lcd
-//    PORTE &= 0x001;
-//    PORTDbits.RD4=1;
-//    PORTDbits.RD4=0;
-//    busy();
-        
+    // clear 
+    for(int i=0; i<16; i++){
+        PORTE = clearMsg[i];
+        PORTDbits.RD4=1;
+        PORTDbits.RD4=0;
+        busy();
+    }
+    PORTBbits.RB15=0;
+    PORTDbits.RD5=0;
+    PORTE = index;
+    PORTDbits.RD4=1;
+    PORTDbits.RD4=0;
+    busy();
+    PORTBbits.RB15=1;
+    PORTDbits.RD5=0;
+}
+void write_to_first_line(char msg[], int len)
+{
+    clearLCD(FIRST_LINE);
+//    PORTE = 0x8f;
+//    char firsLine[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f};
+
+//    for(int j=0; j<16; j++){
+//        PORTE--;
+        for(int i=0; i<len; i++){
+            PORTE = msg[i];
+            PORTDbits.RD4=1;
+            PORTDbits.RD4=0;
+            busy();
+        }
+//    }
+    
+//    switchLeft();
+
+}
+
+
+void write_to_secod_line(char msg[], int len)
+{
+    clearLCD(SECOND_LINE); 
     for(int i=0; i<len; i++){
         PORTE = msg[i];
         PORTDbits.RD4=1;
         PORTDbits.RD4=0;
         busy();
     }
+    
 }
 
 void main()
@@ -122,7 +177,7 @@ void main()
     //*****
     int LCD_i, LCD_j;
     // 0x80-0x8f, 0x90-0x9f
-//    char string[]="Menachem Epstein";
+    char string[]="Menachem Epstein";
     char control[]={0x38,0x38,0x38,0xe,0x6,0x1};
     TRISBbits.TRISB15 = 0; // RB15 (DISP_RS) set as an output
     ANSELBbits.ANSB15 = 0; // disable analog functionality on RB15 (DISP_RS)
@@ -138,7 +193,7 @@ void main()
     PORTDbits.RD5=0;//w=0
     ANSELEbits.ANSE7 = 0;
     
- /*   for(LCD_i=0;LCD_i<6;LCD_i++){
+   for(LCD_i=0;LCD_i<6;LCD_i++){
         PORTE=control[LCD_i];
         PORTDbits.RD4=1;
         PORTDbits.RD4=0;
@@ -147,6 +202,7 @@ void main()
     }
     PORTBbits.RB15=1;//rs=0
     PORTDbits.RD5=0;//w=0
+/*
     for(LCD_i=0;LCD_i<16;LCD_i++){
         PORTE=string[LCD_i];
         PORTDbits.RD4=1;
@@ -157,12 +213,12 @@ void main()
         */
     
     //write something to first line
-    char name1[] = "hello           ";
-    write_to_first_line(name1, 16);
+    char name1[] = "hello";
+    write_to_first_line(name1, 5);
     
     // try to write to 2 line
-    char name[] = "Anan            ";
-    write_to_secod_line(name, 16);
+    char name[] = "Afeka 24";
+    write_to_secod_line(name, 8);
     //*****
     
     unsigned char SW2_Numbers[ARRAY_LEN] = {0x18, 0x24, 0x42, 0x81};
@@ -170,25 +226,26 @@ void main()
     int j;
     
     while(1){
-        if(PORTBbits.RB11){ // if SW5
+        if(SW5){
             char string[]="Mode 5";
             char msg[] = "Halt";
             write_to_first_line(string, 6);
             write_to_secod_line(msg, 4);
             PORTA = 0x00;
+            delay(speed);
             // doing nothing
             // but not going to the other operations
         }        
         else{ // if SW5=0
-            if(PORTDbits.RD14) // if SW4
+            if(SW4) 
                 speed = 1;
             else 
                 speed = 0;
             //******** SW0 ********
-            if(PORTFbits.RF3){ // if SW0
+            if(SW0){
                char string[]="Mode 0";
                write_to_first_line(string, 6);
-               if(PORTDbits.RD15){// if SW3
+               if(SW3){// if SW3
                    PORTA --;
                if(speed){
                    char msg[] = "Counter Down Slow";
@@ -202,21 +259,21 @@ void main()
                    PORTA ++;
                if(speed){
                    char msg[] = "Counter Up Slow";
-                   write_to_secod_line(msg, 17);                    
+                   write_to_secod_line(msg, 15);                    
                }else{
                    char msg[] = "Counter Up Fast";
-                   write_to_secod_line(msg, 17);                    
+                   write_to_secod_line(msg, 15);                    
                 }
                }
                delay(speed);
             }//******** SW0 ********
             //******** SW1 ********
-            else if(PORTFbits.RF5){ // if SW1
+            else if(SW1){ 
                 // SHIFT
                 char string[]="Mode 1";
                 write_to_first_line(string, 6);
                 delay(speed);
-                if(PORTDbits.RD15){//if SW3
+                if(SW3){
                     if(speed){
                         char msg[] = "Shift Right Slow";
                         write_to_secod_line(msg, 16);
@@ -248,16 +305,16 @@ void main()
                 }
             }//******** SW1 ********
             //******** SW2 ********
-            else if(PORTFbits.RF4){ // if SW2
+            else if(SW2){
                 char string[]="Mode 2";
                 write_to_first_line(string, 6);
-                if(PORTDbits.RD15){
+                if(SW3){
                     if(speed){
                         char msg[] = "Swing Up Slow";
-                        write_to_secod_line(msg, 15);
+                        write_to_secod_line(msg, 13);
                     }else{
                         char msg[] = "Swing Up Fast";                    
-                        write_to_secod_line(msg, 15);
+                        write_to_secod_line(msg, 13);
                     }
                     for(j=0; j<4; j++){
                         PORTA = SW2_Numbers[j];
@@ -279,7 +336,7 @@ void main()
                 }
             }//******** SW2 ********
             //******** SW6 ********
-            if(PORTBbits.RB10){ // if SW6
+            else if(SW6){
                 // buzzer
                 char string[]="Mode 6";
                 write_to_first_line(string, 6);
@@ -296,7 +353,7 @@ void main()
                 delay(speed);            
             }//******** SW6 ********
             //******** SW7 ********
-            if(PORTBbits.RB9){ // if SW7
+            if(SW7){
                 // exit
                 char string[]="Mode 7";
                 write_to_first_line(string, 6);
